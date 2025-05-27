@@ -1,7 +1,6 @@
 package eccfrog512ck2
 
 import (
-	"crypto/rand"
 	"fmt"
 	"math/big"
 )
@@ -14,6 +13,15 @@ var (
 	a  *big.Int = &big.Int{}
 	b  *big.Int = &big.Int{}
 )
+
+func init() {
+	p.SetString("9149012705592502490164965176888130701548053918699793689672344807772801105830681498780746622530729418858477103073591918058480028776841126664954537807339721", 10)
+	n.SetString("9149012705592502490164965176888130701548053918699793689672344807772801105830557269123255850915745063541133157503707284048429261692283957712127567713136519", 10)
+	gX.SetString("8426241697659200371183582771153260966569955699615044232640972423431947060129573736112298744977332416175021337082775856058058394786264506901662703740544432", 10)
+	gY.SetString("4970129934163735248083452609809843496231929620419038489506391366136186485994288320758668172790060801809810688192082146431970683113557239433570011112556001", 10)
+	a.Set(p).Sub(a, big.NewInt(7))
+	b.SetString("95864189850957917703933006131793785649240252916618759767550461391845895018181", 10)
+}
 
 // coordinate represents a generic coordinate.
 type coordinate[T any] [2]T
@@ -35,12 +43,22 @@ func (m maybe[T]) Extract() (T, bool) {
 	return m.value, m.has
 }
 
+// CurvePoint represents a point on the EccFrog512CK2 elliptic curve.
+// It can either be a finite point with x,y coordinates or the point at
+// infinity.
 type CurvePoint maybe[coordinate[*big.Int]]
 
+// PointAtInfinity gets the point at infinity for the EccFrog512Ck2 elliptic
+// curve.
 func PointAtInfinity() CurvePoint {
 	return CurvePoint(nothing[coordinate[*big.Int]]())
 }
 
+// IfNotInfinity calls the callback that's passed-in as the first parameter.
+//
+// The general idea is that we're trying to guardrail against attempting to
+// access coordinates on a point on a curve, to ensure that we avoid trying to
+// do so for the point at infinty.
 func (c CurvePoint) IfNotInfinity(cb func([2]*big.Int)) bool {
 	if c == PointAtInfinity() {
 		return false
@@ -139,6 +157,7 @@ func (c CurvePoint) equal(b CurvePoint) bool {
 	return p1[0].Cmp(p2[0]) == 0 && p1[1].Cmp(p2[1]) == 0
 }
 
+// Equal returns true if the curve point b equals to the receiver curve point c.
 func (c CurvePoint) Equal(b CurvePoint) bool {
 	assertInCurve(c)
 	assertInCurve(b)
@@ -155,19 +174,9 @@ func GeneratorOrder() *big.Int {
 	return (&big.Int{}).Set(n)
 }
 
+// Generator gets the generator of the EccFrog512Ck2 curve.
 func Generator() CurvePoint {
 	return CurvePoint(something(coordinate[*big.Int]{gX, gY}))
-}
-
-// GeneratePrivateKey generates a random private key.
-//
-// Effectively a shorthand for `rand.Int(rand.Reader, GeneratorOrder())`
-func GeneratePrivateKey() (*big.Int, error) {
-	return rand.Int(rand.Reader, n)
-}
-
-func GetPublicKey(privateKey *big.Int) CurvePoint {
-	return Generator().Multiply(privateKey)
 }
 
 func IsCoordinateInCurve(point coordinate[*big.Int]) bool {
@@ -203,22 +212,8 @@ func assertInCurve(c CurvePoint) {
 	}
 }
 
-func init() {
-	p.SetString("9149012705592502490164965176888130701548053918699793689672344807772801105830681498780746622530729418858477103073591918058480028776841126664954537807339721", 10)
-	n.SetString("9149012705592502490164965176888130701548053918699793689672344807772801105830557269123255850915745063541133157503707284048429261692283957712127567713136519", 10)
-	gX.SetString("8426241697659200371183582771153260966569955699615044232640972423431947060129573736112298744977332416175021337082775856058058394786264506901662703740544432", 10)
-	gY.SetString("4970129934163735248083452609809843496231929620419038489506391366136186485994288320758668172790060801809810688192082146431970683113557239433570011112556001", 10)
-	a.Set(p).Sub(a, big.NewInt(7))
-	b.SetString("95864189850957917703933006131793785649240252916618759767550461391845895018181", 10)
-}
-
-// Ensure CurvePoint implements fmt.Stringer interface
 var _ fmt.Stringer = CurvePoint{}
-
-// Ensure CurvePoint implements fmt.GoStringer interface
 var _ fmt.GoStringer = CurvePoint{}
-
-// Ensure CurvePoint implements fmt.Formatter interface
 var _ fmt.Formatter = CurvePoint{}
 
 // String returns a string representation of the CurvePoint.
