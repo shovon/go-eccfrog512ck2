@@ -15,12 +15,12 @@ var (
 )
 
 func init() {
-	p.SetString("9149012705592502490164965176888130701548053918699793689672344807772801105830681498780746622530729418858477103073591918058480028776841126664954537807339721", 10)
-	n.SetString("9149012705592502490164965176888130701548053918699793689672344807772801105830557269123255850915745063541133157503707284048429261692283957712127567713136519", 10)
-	gX.SetString("8426241697659200371183582771153260966569955699615044232640972423431947060129573736112298744977332416175021337082775856058058394786264506901662703740544432", 10)
-	gY.SetString("4970129934163735248083452609809843496231929620419038489506391366136186485994288320758668172790060801809810688192082146431970683113557239433570011112556001", 10)
-	a.Set(p).Sub(a, big.NewInt(7))
-	b.SetString("95864189850957917703933006131793785649240252916618759767550461391845895018181", 10)
+	p, _ = p.SetString("9149012705592502490164965176888130701548053918699793689672344807772801105830681498780746622530729418858477103073591918058480028776841126664954537807339721", 10)
+	n, _ = n.SetString("9149012705592502490164965176888130701548053918699793689672344807772801105830557269123255850915745063541133157503707284048429261692283957712127567713136519", 10)
+	gX, _ = gX.SetString("8426241697659200371183582771153260966569955699615044232640972423431947060129573736112298744977332416175021337082775856058058394786264506901662703740544432", 10)
+	gY, _ = gY.SetString("4970129934163735248083452609809843496231929620419038489506391366136186485994288320758668172790060801809810688192082146431970683113557239433570011112556001", 10)
+	a = a.Set(p).Sub(a, big.NewInt(7))
+	b, _ = b.SetString("95864189850957917703933006131793785649240252916618759767550461391845895018181", 10)
 }
 
 // coordinate represents a generic coordinate.
@@ -59,14 +59,14 @@ func PointAtInfinity() CurvePoint {
 // The general idea is that we're trying to guardrail against attempting to
 // access coordinates on a point on a curve, to ensure that we avoid trying to
 // do so for the point at infinty.
-func (c CurvePoint) IfNotInfinity(cb func([2]*big.Int)) bool {
+func (c CurvePoint) CoordinateIfNotInfinity() (*big.Int, *big.Int, bool) {
 	if c == PointAtInfinity() {
-		return false
+		return nil, nil, false
 	}
 
-	cb(c.value)
-
-	return true
+	x := new(big.Int).Set(c.value[0])
+	y := new(big.Int).Set(c.value[1])
+	return x, y, true
 }
 
 func (c CurvePoint) add(b CurvePoint) CurvePoint {
@@ -86,14 +86,14 @@ func (c CurvePoint) add(b CurvePoint) CurvePoint {
 	y := &big.Int{}
 
 	if c.equal(b) {
-		// fmt.Printf("Equal! %v %v\n", c, i)
-		if p1[1].Cmp(big.NewInt(0)) == 0 {
-			return PointAtInfinity()
-		}
 		// Calculate the slope (m) of the tangent line
 		numerator := new(big.Int).Mul(big.NewInt(3), new(big.Int).Mul(p1[0], p1[0]))
 		numerator.Add(numerator, a)
+		// TODO: unit test to find a point such that `p1[1] == 0`.
 		denominator := new(big.Int).Mul(big.NewInt(2), p1[1])
+		if denominator.Cmp(big.NewInt(0)) == 0 {
+			return PointAtInfinity()
+		}
 		m.Mul(numerator, (&big.Int{}).ModInverse(denominator, p))
 		m.Mod(m, p)
 	} else {
@@ -221,7 +221,7 @@ var _ fmt.Formatter = CurvePoint{}
 func (c CurvePoint) String() string {
 	coord, ok := maybe[coordinate[*big.Int]](c).Extract()
 	if !ok {
-		return "O"
+		return "(point at infinity)"
 	}
 	return fmt.Sprintf("(%s, %s)", coord[0].String(), coord[1].String())
 }

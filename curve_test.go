@@ -7,6 +7,42 @@ import (
 	"github.com/shovon/go-eccfrog512ck2"
 )
 
+func TestCoordinateIfNotInfinity(t *testing.T) {
+	t.Run("point at infinity", func(t *testing.T) {
+		if _, _, ok := eccfrog512ck2.PointAtInfinity().CoordinateIfNotInfinity(); ok {
+			t.Fail()
+		}
+	})
+}
+
+func TestAdd(t *testing.T) {
+	t.Run("rhs is point at infinity", func(t *testing.T) {
+		a := eccfrog512ck2.Generator()
+		b := eccfrog512ck2.PointAtInfinity()
+
+		if !a.Add(b).Equal(a) {
+			t.Fail()
+		}
+	})
+}
+
+func TestOrderOfCurve(t *testing.T) {
+	if !eccfrog512ck2.Generator().Multiply(eccfrog512ck2.GeneratorOrder()).Equal(eccfrog512ck2.PointAtInfinity()) {
+		t.Fail()
+	}
+}
+
+func TestEqual(t *testing.T) {
+	t.Run("rhs is pointa t infinity", func(t *testing.T) {
+		a := eccfrog512ck2.Generator()
+		b := eccfrog512ck2.PointAtInfinity()
+
+		if a.Equal(b) {
+			t.Fail()
+		}
+	})
+}
+
 func TestZeroValue(t *testing.T) {
 	if (eccfrog512ck2.CurvePoint{}) != eccfrog512ck2.PointAtInfinity() {
 		t.Fail()
@@ -18,12 +54,7 @@ func TestPointInInfinityIsInCurve(t *testing.T) {
 }
 
 func TestIsGeneratorInCurve(t *testing.T) {
-	ok := eccfrog512ck2.Generator().IfNotInfinity(func(p [2]*big.Int) {
-		if !eccfrog512ck2.IsCoordinateInCurve(p) {
-			t.Error("Coordinate is not in curve")
-			t.Fail()
-		}
-	})
+	_, _, ok := eccfrog512ck2.Generator().CoordinateIfNotInfinity()
 
 	if !ok {
 		t.Error("The generator is supposed to *not* be the point at infinity!")
