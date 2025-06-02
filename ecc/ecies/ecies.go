@@ -50,4 +50,18 @@ func (e ECIESParams) Encrypt(message []byte) (eccfrog512ck2.CurvePoint, Cipherte
 	return rG, ciphertext, mac, nil
 }
 
-// func (e ECIESPublicKey) Decrypt
+func ECIESECCFrog512Ck2HKDF2SHA256AES256GCM() ECIESParams {
+	return ECIESParams{
+		// TODO: fill this up
+		// // TODO
+		// KDF: nil,
+		// // TODO
+		// MAC: nil,
+		// // TODO
+		// Encryptor: nil,
+		// // TODO
+		// PrivateKey: nil,
+		// // TODO
+		// PublicKey: eccfrog512ck2.PointAtInfinity(),
+	}
+}
