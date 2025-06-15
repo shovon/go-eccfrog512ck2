@@ -54,11 +54,10 @@ type Decryptor[C any] func(cryptohelpers.SecretKey, C) ([]byte, error)
 
 func (e Decryptor[C]) Decrypt(
 	privateKey ecc.PrivateKey,
-	publicKey eccfrog512ck2.CurvePoint,
 	rG eccfrog512ck2.CurvePoint,
 	ciphertext C,
 ) ([]byte, error) {
-	s := publicKey.Multiply(privateKey.GetKey())
+	s := rG.Multiply(privateKey.GetKey())
 	secret, _, _ := s.CoordinateIfNotInfinity()
 	secretCopy := (&big.Int{}).Set(secret).Bytes()
 

@@ -16,7 +16,7 @@ type AESGCMResults struct {
 	Nonce      []byte
 }
 
-func AESGCM256Encrypt(
+func AESGCM256KDFEncrypt(
 	kdf func(SecretKey) ([32]byte, error),
 ) func(SecretKey, []byte) (AESGCMResults, error) {
 	return func(secret SecretKey, plaintext []byte) (AESGCMResults, error) {
@@ -54,7 +54,7 @@ func AESGCM256Encrypt(
 	}
 }
 
-func AESGCM256Decrypt(
+func AESGCM256KDFDecrypt(
 	kdf func(SecretKey) ([32]byte, error),
 ) func(SecretKey, AESGCMResults) ([]byte, error) {
 	return func(secret SecretKey, nonceCiphertext AESGCMResults) ([]byte, error) {
