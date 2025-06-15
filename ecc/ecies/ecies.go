@@ -6,62 +6,50 @@ import (
 
 	"github.com/shovon/go-eccfrog512ck2"
 	"github.com/shovon/go-eccfrog512ck2/ecc"
+	"github.com/shovon/go-eccfrog512ck2/ecc/cryptohelpers"
 )
 
-type (
-	MacKey        []byte
-	EncryptionKey []byte
-	Ciphertext    []byte
-	MAC           []byte
-)
-type ECIESParams struct {
-	KDF        func([]byte) ([]byte, []byte, error)
-	MAC        func(MacKey, []byte) ([]byte, error)
-	Encryptor  func(EncryptionKey, []byte) ([]byte, error)
-	PrivateKey ecc.PrivateKey
-	PublicKey  eccfrog512ck2.CurvePoint
-}
+type Encryptor[C any] func(cryptohelpers.SecretKey, []byte) (C, error)
 
-func (e ECIESParams) Encrypt(message []byte) (eccfrog512ck2.CurvePoint, Ciphertext, MAC, error) {
+func (e Encryptor[C]) Encrypt(
+	privateKey ecc.PrivateKey,
+	publicKey eccfrog512ck2.CurvePoint,
+	message []byte,
+) (eccfrog512ck2.CurvePoint, C, error) {
+	var defaultC C
 	r, err := rand.Int(rand.Reader, eccfrog512ck2.GeneratorOrder())
 	if err != nil {
-		return eccfrog512ck2.PointAtInfinity(), nil, nil, err
+		return eccfrog512ck2.PointAtInfinity(), defaultC, err
 	}
 	rG := eccfrog512ck2.Generator().Multiply(r)
 
-	s := e.PublicKey.Multiply(r)
+	s := publicKey.Multiply(r)
 	secret, _, _ := s.CoordinateIfNotInfinity()
 	secretCopy := (&big.Int{}).Set(secret).Bytes()
 
-	encKey, macKey, err := e.KDF(secretCopy)
+	ciphertext, err := e(secretCopy, message)
 	if err != nil {
-		return eccfrog512ck2.PointAtInfinity(), nil, nil, err
-	}
-	ciphertext, err := e.Encryptor(EncryptionKey(encKey), message)
-	if err != nil {
-		return eccfrog512ck2.PointAtInfinity(), nil, nil, err
+		return eccfrog512ck2.PointAtInfinity(), defaultC, err
 	}
 
-	mac, err := e.MAC(MacKey(macKey), ciphertext)
-	if err != nil {
-		return eccfrog512ck2.PointAtInfinity(), nil, nil, err
-	}
-
-	return rG, ciphertext, mac, nil
+	return rG, ciphertext, nil
 }
 
-func ECIESECCFrog512Ck2HKDF2SHA256AES256GCM() ECIESParams {
-	return ECIESParams{
-		// TODO: fill this up
-		// // TODO
-		// KDF: nil,
-		// // TODO
-		// MAC: nil,
-		// // TODO
-		// Encryptor: nil,
-		// // TODO
-		// PrivateKey: nil,
-		// // TODO
-		// PublicKey: eccfrog512ck2.PointAtInfinity(),
+type Decryptor[C any] func(cryptohelpers.SecretKey, C) ([]byte, error)
+
+func (e Decryptor[C]) Decrypt(
+	privateKey ecc.PrivateKey,
+	ephemeralPublicKey eccfrog512ck2.CurvePoint,
+	ciphertext C,
+) ([]byte, error) {
+	s := ephemeralPublicKey.Multiply(privateKey.GetKey())
+	secret, _, _ := s.CoordinateIfNotInfinity()
+	secretCopy := (&big.Int{}).Set(secret).Bytes()
+
+	plaintext, err := e(secretCopy, ciphertext)
+	if err != nil {
+		return nil, err
 	}
+
+	return plaintext, nil
 }

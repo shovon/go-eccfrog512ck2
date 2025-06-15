@@ -23,7 +23,6 @@ func init() {
 	b, _ = b.SetString("95864189850957917703933006131793785649240252916618759767550461391845895018181", 10)
 }
 
-// coordinate represents a generic coordinate.
 type coordinate[T any] [2]T
 
 type maybe[T comparable] struct {
@@ -54,11 +53,13 @@ func PointAtInfinity() CurvePoint {
 	return CurvePoint(nothing[coordinate[*big.Int]]())
 }
 
-// IfNotInfinity calls the callback that's passed-in as the first parameter.
+// CoordinateIfNotInfinity returns the x and y coordinates of the curve point if
+// it is not the point at infinity. If the point is at infinity, it returns nil,
+// nil, false. Otherwise it returns copies of the x and y coordinates along with
+// true.
 //
-// The general idea is that we're trying to guardrail against attempting to
-// access coordinates on a point on a curve, to ensure that we avoid trying to
-// do so for the point at infinty.
+// The returned coordinates are copies of the internal values to prevent
+// mutation.
 func (c CurvePoint) CoordinateIfNotInfinity() (*big.Int, *big.Int, bool) {
 	if c == PointAtInfinity() {
 		return nil, nil, false
@@ -123,12 +124,24 @@ func (c CurvePoint) add(b CurvePoint) CurvePoint {
 	return CurvePoint(something(coordinate[*big.Int]{x, y}))
 }
 
+// Add adds two points on the curve and returns their sum. The method ensures that
+// both points are valid curve points and returns a new point that is also on the
+// curve. This is the public interface for point addition - it performs validation
+// whereas the internal add() method does not.
 func (c CurvePoint) Add(b CurvePoint) CurvePoint {
 	sum := c.add(b)
 	assertInCurve(sum)
 	return sum
 }
 
+// Multiply performs scalar multiplication of a curve point with a big integer n,
+// returning the resulting curve point. It uses the double-and-add algorithm to
+// efficiently compute n*P where P is the input curve point. The method ensures
+// the result is a valid curve point.
+//
+// The algorithm works by scanning the bits of n from least to most significant.
+// For each bit that is 1, the current point is added to the result, and for
+// each bit (0 or 1) the current point is doubled.
 func (c CurvePoint) Multiply(n *big.Int) CurvePoint {
 	result := PointAtInfinity()
 	temp := c
