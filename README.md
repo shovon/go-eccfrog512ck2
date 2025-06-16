@@ -74,14 +74,14 @@ bobPublicKey, _ := bobPrivateKey.DerivePublicKey()
 // Encrypt message
 message := []byte("Secret message")
 kdf := cryptohelpers.HKDF256(sha256.New)
-rG, ciphertext, _ := ecies.Encryptor[cryptohelpers.AESGCM256KDFResults](
-    cryptohelpers.AESGCM256KDFEncrypt(kdf),
-).Encrypt(alicePrivateKey, bobPublicKey, message)
+rG, ciphertext, _ := ecies.
+  NewEncryptor(cryptohelpers.AESGCM256KDFEncrypt(kdf)).
+  Encrypt(alicePrivateKey, bobPublicKey, message)
 
 // Decrypt message
-plaintext, _ := ecies.Decryptor[cryptohelpers.AESGCM256KDFResults](
-    cryptohelpers.AESGCM256KDFDecrypt(kdf),
-).Decrypt(bobPrivateKey, rG, ciphertext)
+plaintext, _ := ecies.
+  NewDecryptor(cryptohelpers.AESGCM256KDFDecrypt(kdf)).
+  Decrypt(bobPrivateKey, rG, result)
 ```
 
 ## Security
@@ -91,6 +91,17 @@ This implementation uses the EccFrog512ck2 Weierstrass curve family, which provi
 - Key exchange via ECDH
 - Digital signatures via ECDSA
 - Asymmetric encryption via ECIES with AES-GCM-256
+
+## TODO
+
+- [ ] CLI that somewhat resembles OpenSSL
+  - [ ] generate keys
+  - [ ] parse keys
+  - [ ] sign
+  - [ ] verify
+  - [ ] encrypt
+  - [ ] generate shared secret
+- [ ] Publish to gopkg
 
 ## License
 

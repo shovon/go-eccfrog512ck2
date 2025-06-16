@@ -15,6 +15,10 @@ import (
 // the same encryption logic.
 type Encryptor[C any] func(cryptohelpers.SecretKey, []byte) (C, error)
 
+func NewEncryptor[C any](e func(cryptohelpers.SecretKey, []byte) (C, error)) Encryptor[C] {
+	return e
+}
+
 // Encrypt performs ECIES encryption using the provided private key, public key
 // and message. It returns an ephemeral public key and encrypted ciphertext.
 //
@@ -51,6 +55,10 @@ func (e Encryptor[C]) Encrypt(
 // The generic type C allows for different ciphertext formats to be used with
 // the same decryption logic.
 type Decryptor[C any] func(cryptohelpers.SecretKey, C) ([]byte, error)
+
+func NewDecryptor[C any](e func(cryptohelpers.SecretKey, C) ([]byte, error)) Decryptor[C] {
+	return e
+}
 
 func (e Decryptor[C]) Decrypt(
 	privateKey ecc.PrivateKey,

@@ -225,6 +225,21 @@ func assertInCurve(c CurvePoint) {
 	}
 }
 
+// A returns the curve parameter a in the equation y^2 = x^3 + ax + b.
+func A() *big.Int {
+	return (&big.Int{}).Set(a)
+}
+
+// B returns the curve parameter b in the equation y^2 = x^3 + ax + b.
+func B() *big.Int {
+	return (&big.Int{}).Set(b)
+}
+
+// P returns the prime field characteristic p of the curve.
+func P() *big.Int {
+	return (&big.Int{}).Set(p)
+}
+
 var _ fmt.Stringer = CurvePoint{}
 var _ fmt.GoStringer = CurvePoint{}
 var _ fmt.Formatter = CurvePoint{}
@@ -262,4 +277,54 @@ func (c CurvePoint) Format(f fmt.State, verb rune) {
 	default:
 		fmt.Fprintf(f, "%%!%c(CurvePoint=%s)", verb, c.String())
 	}
+}
+
+// NewCurvePoint creates a new curve point from raw x and y coordinates.
+// Returns an error if the point is not on the curve.
+func NewCurvePoint(x, y *big.Int) (CurvePoint, error) {
+	point := coordinate[*big.Int]{x, y}
+	if !IsCoordinateInCurve(point) {
+		return CurvePoint{}, fmt.Errorf("point (%v, %v) is not on the curve", x, y)
+	}
+	return CurvePoint(something(point)), nil
+}
+
+// MarshalSEC1 serializes the curve point in SEC1 format.
+// The output can be either:
+// - Uncompressed: 0x04 || x || y (129 bytes)
+// - Compressed: 0x02 || x or 0x03 || x (65 bytes)
+// where x and y are the coordinates in big-endian format.
+//
+// If the point is at infinity, returns nil.
+// If compressed is true, uses compressed format (0x02 or 0x03 prefix based on y coordinate).
+// If compressed is false, uses uncompressed format (0x04 prefix).
+func (c CurvePoint) MarshalSEC1(compressed bool) []byte {
+	coord, ok := maybe[coordinate[*big.Int]](c).Extract()
+	if !ok {
+		return nil
+	}
+
+	x := coord[0].Bytes()
+	y := coord[1].Bytes()
+
+	// Pad x and y to 64 bytes if needed
+	if len(x) < 64 {
+		x = append(make([]byte, 64-len(x)), x...)
+	}
+	if len(y) < 64 {
+		y = append(make([]byte, 64-len(y)), y...)
+	}
+
+	if !compressed {
+		// Uncompressed format: 0x04 || x || y
+		return append([]byte{0x04}, append(x, y...)...)
+	}
+
+	// Compressed format: 0x02 || x or 0x03 || x
+	// Use 0x02 if y is even, 0x03 if y is odd
+	prefix := byte(0x02)
+	if y[len(y)-1]&1 == 1 {
+		prefix = 0x03
+	}
+	return append([]byte{prefix}, x...)
 }
