@@ -23,18 +23,22 @@ func TestEncryptDecrypt(t *testing.T) {
 		t.Log(err)
 		t.FailNow()
 	}
+	bobPublicKey, err := bobPrivateKey.DerivePublicKey()
+	if err != nil {
+		t.Error(err)
+	}
 
 	kdf := cryptohelpers.HKDF256(sha256.New)
-	rG, result, err := ecies.Encryptor[cryptohelpers.AESGCMResults](
+	rG, result, err := ecies.Encryptor[cryptohelpers.AESGCM256KDFResults](
 		cryptohelpers.AESGCM256KDFEncrypt(kdf),
-	).Encrypt(alicePrivateKey, bobPrivateKey.DerivePublicKey(), message)
+	).Encrypt(alicePrivateKey, bobPublicKey, message)
 
 	if err != nil {
 		t.Log(err)
 		t.FailNow()
 	}
 
-	plaintext, err := ecies.Decryptor[cryptohelpers.AESGCMResults](
+	plaintext, err := ecies.Decryptor[cryptohelpers.AESGCM256KDFResults](
 		cryptohelpers.AESGCM256KDFDecrypt(kdf),
 	).Decrypt(bobPrivateKey, rG, result)
 

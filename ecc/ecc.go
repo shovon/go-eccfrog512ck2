@@ -2,6 +2,7 @@ package ecc
 
 import (
 	"crypto/rand"
+	"errors"
 	"math/big"
 
 	"github.com/shovon/go-eccfrog512ck2"
@@ -16,8 +17,16 @@ func (p PrivateKey) GetKey() *big.Int {
 }
 
 // GetPublicKey gets the public key associated with the random private key.
-func (p PrivateKey) DerivePublicKey() eccfrog512ck2.CurvePoint {
-	return eccfrog512ck2.Generator().Multiply(p.value)
+func (p PrivateKey) DerivePublicKey() (eccfrog512ck2.CurvePoint, error) {
+	if p.value == nil {
+		return eccfrog512ck2.CurvePoint{}, errors.New("the private key is nil")
+	}
+	mod := big.NewInt(0)
+	mod = mod.Mod(p.value, eccfrog512ck2.GeneratorOrder())
+	if mod.Cmp(big.NewInt(0)) == 0 {
+		return eccfrog512ck2.CurvePoint{}, errors.New("the private key is either 0, or a multiple of the order of the group")
+	}
+	return eccfrog512ck2.Generator().Multiply(p.value), nil
 }
 
 func sub1(value *big.Int) *big.Int {

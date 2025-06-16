@@ -11,53 +11,53 @@ import (
 	"golang.org/x/crypto/hkdf"
 )
 
-type AESGCMResults struct {
+type AESGCM256KDFResults struct {
 	CipherText []byte
 	Nonce      []byte
 }
 
 func AESGCM256KDFEncrypt(
 	kdf func(SecretKey) ([32]byte, error),
-) func(SecretKey, []byte) (AESGCMResults, error) {
-	return func(secret SecretKey, plaintext []byte) (AESGCMResults, error) {
+) func(SecretKey, []byte) (AESGCM256KDFResults, error) {
+	return func(secret SecretKey, plaintext []byte) (AESGCM256KDFResults, error) {
 		// Use HKDF-SHA256 to derive a 32-byte key from the secret
 		h := hkdf.New(sha256.New, secret, nil, nil)
 		key := make([]byte, 32)
 		if _, err := io.ReadFull(h, key); err != nil {
-			return AESGCMResults{}, err
+			return AESGCM256KDFResults{}, err
 		}
 
 		if len(key) != 32 {
-			return AESGCMResults{}, fmt.Errorf("key must be 32 bytes")
+			return AESGCM256KDFResults{}, fmt.Errorf("key must be 32 bytes")
 		}
 
 		block, err := aes.NewCipher(key)
 		if err != nil {
-			return AESGCMResults{}, err
+			return AESGCM256KDFResults{}, err
 		}
 
 		// GCM mode
 		aesGCM, err := cipher.NewGCM(block)
 		if err != nil {
-			return AESGCMResults{}, err
+			return AESGCM256KDFResults{}, err
 		}
 
 		// Generate random nonce
 		nonce := make([]byte, aesGCM.NonceSize())
 		if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
-			return AESGCMResults{}, err
+			return AESGCM256KDFResults{}, err
 		}
 
 		// Encrypt
 		ciphertext := aesGCM.Seal(nil, nonce, plaintext, nil)
-		return AESGCMResults{CipherText: ciphertext, Nonce: nonce}, nil
+		return AESGCM256KDFResults{CipherText: ciphertext, Nonce: nonce}, nil
 	}
 }
 
 func AESGCM256KDFDecrypt(
 	kdf func(SecretKey) ([32]byte, error),
-) func(SecretKey, AESGCMResults) ([]byte, error) {
-	return func(secret SecretKey, nonceCiphertext AESGCMResults) ([]byte, error) {
+) func(SecretKey, AESGCM256KDFResults) ([]byte, error) {
+	return func(secret SecretKey, nonceCiphertext AESGCM256KDFResults) ([]byte, error) {
 		// Use HKDF-SHA256 to derive a 32-byte key from the secret
 		h := hkdf.New(sha256.New, secret, nil, nil)
 		key := make([]byte, 32)

@@ -3,6 +3,7 @@ package ecdsa
 import (
 	"crypto/rand"
 	"errors"
+	"hash"
 	"math/big"
 
 	"github.com/shovon/go-eccfrog512ck2"
@@ -10,17 +11,31 @@ import (
 )
 
 type Params struct {
-	Hasher func(input []byte) ([]byte, error)
+	hash func() hash.Hash
 }
 
-type SignParams struct {
+type Signer struct {
 	Params
-	PrivateKey ecc.PrivateKey
+	privateKey ecc.PrivateKey
 }
 
-type VerificationParams struct {
+func NewSign(hash func() hash.Hash, privateKey ecc.PrivateKey) Signer {
+	return Signer{
+		Params:     Params{hash: hash},
+		privateKey: privateKey,
+	}
+}
+
+type Verification struct {
 	Params
-	PublicKey eccfrog512ck2.CurvePoint
+	publicKey eccfrog512ck2.CurvePoint
+}
+
+func NewVerification(hash func() hash.Hash, publicKey eccfrog512ck2.CurvePoint) Verification {
+	return Verification{
+		Params:    Params{hash: hash},
+		publicKey: publicKey,
+	}
 }
 
 func extractLeftMostBits(num *big.Int, n int) *big.Int {
@@ -41,11 +56,10 @@ func extractLeftMostBits(num *big.Int, n int) *big.Int {
 	return leftMostBits
 }
 
-func (signParams SignParams) Sign(message []byte) (*big.Int, *big.Int, error) {
-	hashbytes, err := signParams.Params.Hasher(message)
-	if err != nil {
-		return nil, nil, err
-	}
+func (signParams Signer) Sign(message []byte) (*big.Int, *big.Int, error) {
+	h := signParams.Params.hash()
+	h.Write(message)
+	hashbytes := h.Sum(nil)
 
 	generatorOrder := eccfrog512ck2.GeneratorOrder()
 
@@ -58,6 +72,7 @@ func (signParams SignParams) Sign(message []byte) (*big.Int, *big.Int, error) {
 
 	for s.Cmp(big.NewInt(0)) == 0 || r.Cmp(big.NewInt(0)) == 0 {
 		for k.Cmp(big.NewInt(0)) == 0 {
+			var err error
 			k, err = rand.Int(rand.Reader, generatorOrder)
 			if err != nil {
 				panic(err)
@@ -66,10 +81,10 @@ func (signParams SignParams) Sign(message []byte) (*big.Int, *big.Int, error) {
 
 		p := eccfrog512ck2.Generator().Multiply(k)
 
-		if x, _, ok := p.CoordinateIfNotInfinity(); !ok {
+		if x, _, ok := p.CoordinateIfNotInfinity(); ok {
 			r = r.Mod(x, generatorOrder)
 			kInverse := k.ModInverse(k, generatorOrder)
-			s = s.Mul(r, (signParams.PrivateKey.GetKey())).Add(s, z).Mul(s, kInverse)
+			s = s.Mul(r, (signParams.privateKey.GetKey())).Add(s, z).Mul(s, kInverse)
 			s.Mod(s, generatorOrder)
 		} else {
 			return nil, nil, errors.New("can't operate with the point at infinity")
@@ -79,13 +94,12 @@ func (signParams SignParams) Sign(message []byte) (*big.Int, *big.Int, error) {
 	return r, s, nil
 }
 
-func (params VerificationParams) Verify(hasher func(input []byte) ([]byte, error), signature [2]*big.Int, message []byte) (bool, error) {
+func (params Verification) Verify(signature [2]*big.Int, message []byte) (bool, error) {
 	generatorOrder := eccfrog512ck2.GeneratorOrder()
 
-	hashBytes, err := hasher(message)
-	if err != nil {
-		return false, err
-	}
+	h := params.Params.hash()
+	h.Write(message)
+	hashBytes := h.Sum(nil)
 
 	z := extractLeftMostBits(big.NewInt(0).SetBytes(hashBytes), (*big.Int)(generatorOrder).BitLen())
 	sInverse := big.NewInt(0).ModInverse(signature[1], generatorOrder)
@@ -93,9 +107,9 @@ func (params VerificationParams) Verify(hasher func(input []byte) ([]byte, error
 	u1 := big.NewInt(0).Mod(big.NewInt(0).Mul(z, sInverse), generatorOrder)
 	u2 := big.NewInt(0).Mod(big.NewInt(0).Mul(signature[0], sInverse), generatorOrder)
 
-	if x, _, ok := eccfrog512ck2.Generator().Multiply(u1).Add(params.PublicKey.Multiply(u2)).CoordinateIfNotInfinity(); !ok {
+	if x, _, ok := eccfrog512ck2.Generator().Multiply(u1).Add(params.publicKey.Multiply(u2)).CoordinateIfNotInfinity(); ok {
 		return signature[0].Cmp(x) == 0, nil
 	}
 
-	panic("Fatal error: verification yielded a point at infinity, which should be impossible")
+	return false, errors.New("Fatal error: verification yielded a point at infinity, which should be impossible")
 }
