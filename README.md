@@ -99,8 +99,8 @@ This implementation uses the EccFrog512ck2 Weierstrass curve family, which provi
   - [x] parse keys
   - [x] sign
   - [x] verify
-  - [ ] encrypt/decrypt
-  - [ ] generate shared secret
+  - [x] encrypt/decrypt
+  - [x] generate shared secret
 - [ ] Publish to gopkg
 
 ## License

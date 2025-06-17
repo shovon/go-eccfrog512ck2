@@ -9,6 +9,7 @@ import (
 
 	"github.com/shovon/go-eccfrog512ck2/ecc"
 	"github.com/shovon/go-eccfrog512ck2/ecc/cryptohelpers"
+	"github.com/shovon/go-eccfrog512ck2/ecc/ecdh"
 	"github.com/shovon/go-eccfrog512ck2/ecc/ecdsa"
 	"github.com/shovon/go-eccfrog512ck2/ecc/ecies"
 	"github.com/spf13/cobra"
@@ -382,6 +383,66 @@ var decryptCmd = &cobra.Command{
 	},
 }
 
+var ecdhCmd = &cobra.Command{
+	Use:   "ecdh",
+	Short: "Perform ECDH key exchange",
+	Long:  `Generate a shared secret using Elliptic Curve Diffie-Hellman key exchange.`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		keyFile, _ := cmd.Flags().GetString("inkey")
+		peerKeyFile, _ := cmd.Flags().GetString("peerkey")
+		outFile, _ := cmd.Flags().GetString("out")
+
+		if keyFile == "" {
+			return fmt.Errorf("private key file is required")
+		}
+		if peerKeyFile == "" {
+			return fmt.Errorf("peer public key file is required")
+		}
+		if outFile == "" {
+			return fmt.Errorf("output file is required")
+		}
+
+		// Read private key
+		keyBytes, err := os.ReadFile(keyFile)
+		if err != nil {
+			return fmt.Errorf("failed to read private key: %v", err)
+		}
+
+		// Parse private key
+		privateKey, err := ecc.UnmarshalPEM(keyBytes)
+		if err != nil {
+			return fmt.Errorf("failed to parse private key: %v", err)
+		}
+
+		// Read peer public key
+		peerKeyBytes, err := os.ReadFile(peerKeyFile)
+		if err != nil {
+			return fmt.Errorf("failed to read peer public key: %v", err)
+		}
+
+		// Parse peer public key
+		peerPublicKey, err := ecc.UnmarshalPublicPEM(peerKeyBytes)
+		if err != nil {
+			return fmt.Errorf("failed to parse peer public key: %v", err)
+		}
+
+		// Derive shared secret
+		ecdhKey := ecdh.ECDHPrivateKey(privateKey)
+		sharedSecret, err := ecdhKey.DeriveSharedSecret(peerPublicKey)
+		if err != nil {
+			return fmt.Errorf("failed to derive shared secret: %v", err)
+		}
+
+		// Write shared secret to output file
+		if err := os.WriteFile(outFile, sharedSecret, 0600); err != nil {
+			return fmt.Errorf("failed to write shared secret: %v", err)
+		}
+
+		fmt.Printf("Shared secret written to %s\n", outFile)
+		return nil
+	},
+}
+
 func init() {
 	// Add commands to root
 	rootCmd.AddCommand(genpkeyCmd)
@@ -390,6 +451,7 @@ func init() {
 	rootCmd.AddCommand(verifyCmd)
 	rootCmd.AddCommand(encryptCmd)
 	rootCmd.AddCommand(decryptCmd)
+	rootCmd.AddCommand(ecdhCmd)
 
 	// Add flags
 	genpkeyCmd.Flags().StringP("out", "o", "", "Output file for private key")
@@ -428,6 +490,13 @@ func init() {
 	decryptCmd.MarkFlagRequired("in")
 	decryptCmd.MarkFlagRequired("out")
 	decryptCmd.MarkFlagRequired("inkey")
+
+	ecdhCmd.Flags().StringP("inkey", "k", "", "Private key file")
+	ecdhCmd.Flags().StringP("peerkey", "p", "", "Peer's public key file")
+	ecdhCmd.Flags().StringP("out", "o", "", "Output file for shared secret")
+	ecdhCmd.MarkFlagRequired("inkey")
+	ecdhCmd.MarkFlagRequired("peerkey")
+	ecdhCmd.MarkFlagRequired("out")
 }
 
 func main() {
