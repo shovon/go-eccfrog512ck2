@@ -7,48 +7,48 @@ import (
 	"io"
 )
 
-type AESGCM256Results struct {
+type AES256GCMResults struct {
 	CipherText []byte
 	Nonce      []byte
 }
 
-func AESGCM256Encrypt(
+func AES256GCMEncrypt(
 	kdf func(SecretKey) ([32]byte, error),
-) func(SecretKey, []byte) (AESGCM256Results, error) {
-	return func(secret SecretKey, plaintext []byte) (AESGCM256Results, error) {
+) func(SecretKey, []byte) (AES256GCMResults, error) {
+	return func(secret SecretKey, plaintext []byte) (AES256GCMResults, error) {
 		// Use HKDF-SHA256 to derive a 32-byte key from the secret
 		key, err := kdf(secret)
 		if err != nil {
-			return AESGCM256Results{}, err
+			return AES256GCMResults{}, err
 		}
 
 		block, err := aes.NewCipher(key[:])
 		if err != nil {
-			return AESGCM256Results{}, err
+			return AES256GCMResults{}, err
 		}
 
 		// GCM mode
 		aesGCM, err := cipher.NewGCM(block)
 		if err != nil {
-			return AESGCM256Results{}, err
+			return AES256GCMResults{}, err
 		}
 
 		// Generate random nonce
 		nonce := make([]byte, aesGCM.NonceSize())
 		if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
-			return AESGCM256Results{}, err
+			return AES256GCMResults{}, err
 		}
 
 		// Encrypt
 		ciphertext := aesGCM.Seal(nil, nonce, plaintext, nil)
-		return AESGCM256Results{CipherText: ciphertext, Nonce: nonce}, nil
+		return AES256GCMResults{CipherText: ciphertext, Nonce: nonce}, nil
 	}
 }
 
-func AESGCM256Decrypt(
+func AES256GCMDecrypt(
 	kdf func(SecretKey) ([32]byte, error),
-) func(SecretKey, AESGCM256Results) ([]byte, error) {
-	return func(secret SecretKey, nonceCiphertext AESGCM256Results) ([]byte, error) {
+) func(SecretKey, AES256GCMResults) ([]byte, error) {
+	return func(secret SecretKey, nonceCiphertext AES256GCMResults) ([]byte, error) {
 		// Use HKDF-SHA256 to derive a 32-byte key from the secret
 		key, err := kdf(secret)
 		if err != nil {

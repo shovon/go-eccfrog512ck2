@@ -273,7 +273,7 @@ var encryptCmd = &cobra.Command{
 		// Encrypt message
 		kdf := cryptohelpers.HKDF256(sha256.New)
 		rG, ciphertext, err := ecies.
-			NewEncryptor(cryptohelpers.AESGCM256Encrypt(kdf)).
+			NewEncryptor(cryptohelpers.AES256GCMEncrypt(kdf)).
 			Encrypt(ephemeralKey, publicKey, message)
 		if err != nil {
 			return fmt.Errorf("failed to encrypt message: %v", err)
@@ -360,7 +360,7 @@ var decryptCmd = &cobra.Command{
 			return fmt.Errorf("invalid input file format")
 		}
 
-		ciphertext := cryptohelpers.AESGCM256Results{
+		ciphertext := cryptohelpers.AES256GCMResults{
 			CipherText: input[8+rGLength : 8+rGLength+ciphertextLength],
 			Nonce:      input[8+rGLength+ciphertextLength:],
 		}
@@ -368,7 +368,7 @@ var decryptCmd = &cobra.Command{
 		// Decrypt message
 		kdf := cryptohelpers.HKDF256(sha256.New)
 		plaintext, err := ecies.
-			NewDecryptor(cryptohelpers.AESGCM256Decrypt(kdf)).
+			NewDecryptor(cryptohelpers.AES256GCMDecrypt(kdf)).
 			Decrypt(privateKey, rG, ciphertext)
 		if err != nil {
 			return fmt.Errorf("failed to decrypt message: %v", err)

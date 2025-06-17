@@ -75,12 +75,12 @@ bobPublicKey, _ := bobPrivateKey.DerivePublicKey()
 message := []byte("Secret message")
 kdf := cryptohelpers.HKDF256(sha256.New)
 rG, ciphertext, _ := ecies.
-  NewEncryptor(cryptohelpers.AESGCM256Encrypt(kdf)).
+  NewEncryptor(cryptohelpers.AES256GCMEncrypt(kdf)).
   Encrypt(alicePrivateKey, bobPublicKey, message)
 
 // Decrypt message
 plaintext, _ := ecies.
-  NewDecryptor(cryptohelpers.AESGCM256Decrypt(kdf)).
+  NewDecryptor(cryptohelpers.AES256GCMDecrypt(kdf)).
   Decrypt(bobPrivateKey, rG, result)
 ```
 
