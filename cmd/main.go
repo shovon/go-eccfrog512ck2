@@ -2,12 +2,15 @@ package main
 
 import (
 	"crypto/sha256"
+	"encoding/binary"
 	"fmt"
 	"math/big"
 	"os"
 
 	"github.com/shovon/go-eccfrog512ck2/ecc"
+	"github.com/shovon/go-eccfrog512ck2/ecc/cryptohelpers"
 	"github.com/shovon/go-eccfrog512ck2/ecc/ecdsa"
+	"github.com/shovon/go-eccfrog512ck2/ecc/ecies"
 	"github.com/spf13/cobra"
 )
 
@@ -223,12 +226,170 @@ var verifyCmd = &cobra.Command{
 	},
 }
 
+var encryptCmd = &cobra.Command{
+	Use:   "encrypt",
+	Short: "Encrypt a file",
+	Long:  `Encrypt a file using ECIES with AES-GCM-256.`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		inFile, _ := cmd.Flags().GetString("in")
+		outFile, _ := cmd.Flags().GetString("out")
+		keyFile, _ := cmd.Flags().GetString("inkey")
+
+		if inFile == "" {
+			return fmt.Errorf("input file is required")
+		}
+		if outFile == "" {
+			return fmt.Errorf("output file is required")
+		}
+		if keyFile == "" {
+			return fmt.Errorf("public key file is required")
+		}
+
+		// Read public key
+		keyBytes, err := os.ReadFile(keyFile)
+		if err != nil {
+			return fmt.Errorf("failed to read public key: %v", err)
+		}
+
+		// Parse public key
+		publicKey, err := ecc.UnmarshalPublicPEM(keyBytes)
+		if err != nil {
+			return fmt.Errorf("failed to parse public key: %v", err)
+		}
+
+		// Read input file
+		message, err := os.ReadFile(inFile)
+		if err != nil {
+			return fmt.Errorf("failed to read input file: %v", err)
+		}
+
+		// Generate ephemeral key pair
+		ephemeralKey, err := ecc.GeneratePrivateKey()
+		if err != nil {
+			return fmt.Errorf("failed to generate ephemeral key: %v", err)
+		}
+
+		// Encrypt message
+		kdf := cryptohelpers.HKDF256(sha256.New)
+		rG, ciphertext, err := ecies.
+			NewEncryptor(cryptohelpers.AESGCM256Encrypt(kdf)).
+			Encrypt(ephemeralKey, publicKey, message)
+		if err != nil {
+			return fmt.Errorf("failed to encrypt message: %v", err)
+		}
+
+		// Write output file
+		// Format: [rG length (4 bytes)][rG bytes][ciphertext length (4 bytes)][ciphertext bytes]
+		rGBytes := rG.MarshalSEC1(false)
+		rGLength := make([]byte, 4)
+		binary.BigEndian.PutUint32(rGLength, uint32(len(rGBytes)))
+		ciphertextLength := make([]byte, 4)
+		binary.BigEndian.PutUint32(ciphertextLength, uint32(len(ciphertext.CipherText)))
+
+		output := append(rGLength, rGBytes...)
+		output = append(output, ciphertextLength...)
+		output = append(output, ciphertext.CipherText...)
+		output = append(output, ciphertext.Nonce...)
+
+		if err := os.WriteFile(outFile, output, 0644); err != nil {
+			return fmt.Errorf("failed to write encrypted file: %v", err)
+		}
+
+		fmt.Printf("Encrypted file written to %s\n", outFile)
+		return nil
+	},
+}
+
+var decryptCmd = &cobra.Command{
+	Use:   "decrypt",
+	Short: "Decrypt a file",
+	Long:  `Decrypt a file using ECIES with AES-GCM-256.`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		inFile, _ := cmd.Flags().GetString("in")
+		outFile, _ := cmd.Flags().GetString("out")
+		keyFile, _ := cmd.Flags().GetString("inkey")
+
+		if inFile == "" {
+			return fmt.Errorf("input file is required")
+		}
+		if outFile == "" {
+			return fmt.Errorf("output file is required")
+		}
+		if keyFile == "" {
+			return fmt.Errorf("private key file is required")
+		}
+
+		// Read private key
+		keyBytes, err := os.ReadFile(keyFile)
+		if err != nil {
+			return fmt.Errorf("failed to read private key: %v", err)
+		}
+
+		// Parse private key
+		privateKey, err := ecc.UnmarshalPEM(keyBytes)
+		if err != nil {
+			return fmt.Errorf("failed to parse private key: %v", err)
+		}
+
+		// Read input file
+		input, err := os.ReadFile(inFile)
+		if err != nil {
+			return fmt.Errorf("failed to read input file: %v", err)
+		}
+
+		// Parse input file
+		// Format: [rG length (4 bytes)][rG bytes][ciphertext length (4 bytes)][ciphertext bytes][nonce]
+		if len(input) < 8 { // At least 4 bytes for each length
+			return fmt.Errorf("invalid input file format")
+		}
+
+		rGLength := binary.BigEndian.Uint32(input[:4])
+		if len(input) < int(4+rGLength+4) {
+			return fmt.Errorf("invalid input file format")
+		}
+
+		rGBytes := input[4 : 4+rGLength]
+		rG, err := ecc.ParsePublicKeySEC1(rGBytes)
+		if err != nil {
+			return fmt.Errorf("failed to parse ephemeral public key: %v", err)
+		}
+
+		ciphertextLength := binary.BigEndian.Uint32(input[4+rGLength : 8+rGLength])
+		if len(input) < int(8+rGLength+ciphertextLength+12) { // 12 bytes for nonce
+			return fmt.Errorf("invalid input file format")
+		}
+
+		ciphertext := cryptohelpers.AESGCM256Results{
+			CipherText: input[8+rGLength : 8+rGLength+ciphertextLength],
+			Nonce:      input[8+rGLength+ciphertextLength:],
+		}
+
+		// Decrypt message
+		kdf := cryptohelpers.HKDF256(sha256.New)
+		plaintext, err := ecies.
+			NewDecryptor(cryptohelpers.AESGCM256Decrypt(kdf)).
+			Decrypt(privateKey, rG, ciphertext)
+		if err != nil {
+			return fmt.Errorf("failed to decrypt message: %v", err)
+		}
+
+		if err := os.WriteFile(outFile, plaintext, 0644); err != nil {
+			return fmt.Errorf("failed to write decrypted file: %v", err)
+		}
+
+		fmt.Printf("Decrypted file written to %s\n", outFile)
+		return nil
+	},
+}
+
 func init() {
 	// Add commands to root
 	rootCmd.AddCommand(genpkeyCmd)
 	rootCmd.AddCommand(pkeyCmd)
 	rootCmd.AddCommand(signCmd)
 	rootCmd.AddCommand(verifyCmd)
+	rootCmd.AddCommand(encryptCmd)
+	rootCmd.AddCommand(decryptCmd)
 
 	// Add flags
 	genpkeyCmd.Flags().StringP("out", "o", "", "Output file for private key")
@@ -253,6 +414,20 @@ func init() {
 	verifyCmd.MarkFlagRequired("in")
 	verifyCmd.MarkFlagRequired("sigfile")
 	verifyCmd.MarkFlagRequired("inkey")
+
+	encryptCmd.Flags().StringP("in", "i", "", "Input file to encrypt")
+	encryptCmd.Flags().StringP("out", "o", "", "Output file for encrypted data")
+	encryptCmd.Flags().StringP("inkey", "k", "", "Public key file")
+	encryptCmd.MarkFlagRequired("in")
+	encryptCmd.MarkFlagRequired("out")
+	encryptCmd.MarkFlagRequired("inkey")
+
+	decryptCmd.Flags().StringP("in", "i", "", "Input file to decrypt")
+	decryptCmd.Flags().StringP("out", "o", "", "Output file for decrypted data")
+	decryptCmd.Flags().StringP("inkey", "k", "", "Private key file")
+	decryptCmd.MarkFlagRequired("in")
+	decryptCmd.MarkFlagRequired("out")
+	decryptCmd.MarkFlagRequired("inkey")
 }
 
 func main() {

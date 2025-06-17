@@ -95,11 +95,11 @@ This implementation uses the EccFrog512ck2 Weierstrass curve family, which provi
 ## TODO
 
 - [ ] CLI that somewhat resembles OpenSSL
-  - [ ] generate keys
-  - [ ] parse keys
-  - [ ] sign
-  - [ ] verify
-  - [ ] encrypt
+  - [x] generate keys
+  - [x] parse keys
+  - [x] sign
+  - [x] verify
+  - [ ] encrypt/decrypt
   - [ ] generate shared secret
 - [ ] Publish to gopkg
 
