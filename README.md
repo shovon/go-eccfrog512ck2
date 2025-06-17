@@ -94,7 +94,7 @@ This implementation uses the EccFrog512ck2 Weierstrass curve family, which provi
 
 ## TODO
 
-- [ ] CLI that somewhat resembles OpenSSL
+- [x] CLI that somewhat resembles OpenSSL
   - [x] generate keys
   - [x] parse keys
   - [x] sign
