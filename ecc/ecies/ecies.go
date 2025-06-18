@@ -15,6 +15,16 @@ import (
 // the same encryption logic.
 type Encryptor[C any] func(cryptohelpers.SecretKey, []byte) (C, error)
 
+// NewEncryptor creates a new Encryptor function that wraps the provided
+// encryption function. The encryption function takes a secret key and plaintext
+// bytes, and returns an encrypted ciphertext of type C along with any error.
+//
+// Parameters:
+//   - e: The encryption function to wrap that takes a secret key and plaintext
+//     and returns ciphertext of type C
+//
+// Returns:
+// - An Encryptor function that can be used to perform ECIES encryption
 func NewEncryptor[C any](e func(cryptohelpers.SecretKey, []byte) (C, error)) Encryptor[C] {
 	return e
 }
@@ -56,10 +66,31 @@ func (e Encryptor[C]) Encrypt(
 // the same decryption logic.
 type Decryptor[C any] func(cryptohelpers.SecretKey, C) ([]byte, error)
 
+// NewDecryptor creates a new Decryptor by wrapping the provided decryption
+// function. The decryption function takes a secret key and ciphertext of type C,
+// and returns the decrypted plaintext bytes along with any error.
+//
+// Parameters:
+//   - e: The decryption function to wrap that takes a secret key and ciphertext
+//     of type C and returns decrypted plaintext bytes
+//
+// Returns:
+// - A Decryptor function that can be used to perform ECIES decryption
 func NewDecryptor[C any](e func(cryptohelpers.SecretKey, C) ([]byte, error)) Decryptor[C] {
 	return e
 }
 
+// Decrypt decrypts a ciphertext using ECIES decryption with the provided private key
+// and ephemeral public key rG.
+//
+// Parameters:
+//   - privateKey: The recipient's private key used for decryption
+//   - rG: The ephemeral public key generated during encryption
+//   - ciphertext: The encrypted message of type C to decrypt
+//
+// Returns:
+//   - The decrypted plaintext message bytes
+//   - Any error that occurred during decryption
 func (e Decryptor[C]) Decrypt(
 	privateKey ecc.PrivateKey,
 	rG eccfrog512ck2.CurvePoint,
