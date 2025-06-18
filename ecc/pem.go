@@ -7,7 +7,7 @@ import (
 	"github.com/shovon/go-eccfrog512ck2"
 )
 
-// MarshalPEM converts a private key to PEM format
+// MarshalPEM converts a private key to PEM format.
 func (k PrivateKey) MarshalPEM() ([]byte, error) {
 	// Convert private key to SEC1 format
 	keyBytes := k.MarshalSEC1(true)
@@ -22,7 +22,7 @@ func (k PrivateKey) MarshalPEM() ([]byte, error) {
 	return pem.EncodeToMemory(block), nil
 }
 
-// UnmarshalPEM parses a PEM-encoded private key
+// UnmarshalPEM parses a PEM-encoded private key.
 func UnmarshalPEM(pemBytes []byte) (PrivateKey, error) {
 	// Decode PEM block
 	block, _ := pem.Decode(pemBytes)
@@ -38,7 +38,7 @@ func UnmarshalPEM(pemBytes []byte) (PrivateKey, error) {
 	return ParsePrivateKeySEC1(block.Bytes)
 }
 
-// MarshalPublicPEM converts a public key to PEM format
+// MarshalPublicPEM converts a public key to PEM format.
 func MarshalPublicPEM(k eccfrog512ck2.CurvePoint) ([]byte, error) {
 	// Convert public key to SEC1 format
 	keyBytes := k.MarshalSEC1(false)
@@ -53,7 +53,7 @@ func MarshalPublicPEM(k eccfrog512ck2.CurvePoint) ([]byte, error) {
 	return pem.EncodeToMemory(block), nil
 }
 
-// UnmarshalPublicPEM parses a PEM-encoded public key
+// UnmarshalPublicPEM parses a PEM-encoded public key.
 func UnmarshalPublicPEM(pemBytes []byte) (eccfrog512ck2.CurvePoint, error) {
 	// Decode PEM block
 	block, _ := pem.Decode(pemBytes)

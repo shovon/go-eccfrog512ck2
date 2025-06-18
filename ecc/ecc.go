@@ -87,7 +87,8 @@ func ParsePrivateKeySEC1(data []byte) (PrivateKey, error) {
 // optionally prefixed with a version byte (0x00).
 //
 // If includeVersion is true, the output will be prefixed with 0x00.
-// If includeVersion is false, the output will be just the raw private key value.
+// If includeVersion is false, the output will be just the raw private key
+// value.
 func (p PrivateKey) MarshalSEC1(includeVersion bool) []byte {
 	if p.value == nil {
 		return nil
