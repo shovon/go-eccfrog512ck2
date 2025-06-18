@@ -146,17 +146,6 @@ This implementation uses the EccFrog512ck2 Weierstrass curve family, which provi
 - Digital signatures via ECDSA
 - Asymmetric encryption via ECIES with AES-GCM-256
 
-## TODO
-
-- [x] CLI that somewhat resembles OpenSSL
-  - [x] generate keys
-  - [x] parse keys
-  - [x] sign
-  - [x] verify
-  - [x] encrypt/decrypt
-  - [x] generate shared secret
-- [ ] Publish to gopkg
-
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for the full license text.
