@@ -1,4 +1,4 @@
-# Eccfrog512ck2 in Go
+# EccFrog512ck2 in Go
 
 A Go implementation of the [EccFrog512ck2 Weierstrass curve family](https://billatnapier.medium.com/eccfrog512ck2-an-enhanced-512-bit-weierstrass-elliptic-curve-97563d79b6c9) for elliptic curve cryptography. This library provides a robust set of cryptographic primitives for secure communication and digital signatures.
 

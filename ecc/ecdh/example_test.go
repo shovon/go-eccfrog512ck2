@@ -8,7 +8,8 @@ import (
 	"github.com/shovon/go-eccfrog512ck2/ecc/ecdh"
 )
 
-func ExampleDeriveSharedSecret() {
+// ExampleECDHPrivateKey_DeriveSharedSecret demonstrates ECDH shared secret derivation.
+func ExampleECDHPrivateKey_DeriveSharedSecret() {
 	// Generate Alice's private key
 	alicePriv, err := ecc.GeneratePrivateKey()
 	if err != nil {
