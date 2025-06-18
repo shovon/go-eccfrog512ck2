@@ -44,9 +44,6 @@ func ExampleECDHPrivateKey_DeriveSharedSecret() {
 		log.Fatalf("Bob failed to derive shared secret: %v", err)
 	}
 
-	// The shared secrets should be equal
-	fmt.Printf("Alice's shared secret: %x\n", aliceShared)
-	fmt.Printf("Bob's shared secret:   %x\n", bobShared)
 	if string(aliceShared) == string(bobShared) {
 		fmt.Println("Shared secrets match!")
 	} else {
