@@ -84,6 +84,60 @@ plaintext, _ := ecies.
   Decrypt(bobPrivateKey, rG, result)
 ```
 
+## CLI Usage
+
+The library includes a command-line interface (CLI) that provides easy access to all cryptographic operations. The CLI commands are similar to OpenSSL's interface.
+
+### Key Generation
+
+Generate a new private key:
+
+```bash
+eccfrog512ck2 genpkey --out private.pem
+```
+
+Extract public key from private key:
+
+```bash
+eccfrog512ck2 pkey --in private.pem --out public.pem -pubout
+```
+
+### Digital Signatures
+
+Sign a file:
+
+```bash
+eccfrog512ck2 sign --in message.txt --out signature.bin --inkey private.pem
+```
+
+Verify a signature:
+
+```bash
+eccfrog512ck2 verify --in message.txt --sigfile signature.bin --inkey public.pem
+```
+
+### Encryption/Decryption
+
+Encrypt a file:
+
+```bash
+eccfrog512ck2 encrypt --in message.txt --out encrypted.bin --inkey public.pem
+```
+
+Decrypt a file:
+
+```bash
+eccfrog512ck2 decrypt --in encrypted.bin --out decrypted.txt --inkey private.pem
+```
+
+### Key Exchange
+
+Generate a shared secret using ECDH:
+
+```bash
+eccfrog512ck2 ecdh --inkey private.pem --peerkey peer_public.pem --out shared_secret.bin
+```
+
 ## Security
 
 This implementation uses the EccFrog512ck2 Weierstrass curve family, which provides strong security guarantees for:
