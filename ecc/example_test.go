@@ -220,3 +220,123 @@ func Example_parsePublicKeySEC1() {
 		fmt.Printf("Expected error for empty key: %v\n", err)
 	}
 }
+
+func Example_marshalPEM() {
+	// Generate a random private key
+	privKey, err := ecc.GeneratePrivateKey()
+	if err != nil {
+		fmt.Printf("Error generating private key: %v\n", err)
+		return
+	}
+
+	// Marshal the private key to PEM format
+	pemBytes, err := privKey.MarshalPEM()
+	if err != nil {
+		fmt.Printf("Error marshalling to PEM: %v\n", err)
+		return
+	}
+
+	// Print the PEM-encoded private key
+	fmt.Printf("%s", pemBytes)
+}
+
+func Example_unmarshalPEM() {
+	// Generate a random private key
+	privKey, err := ecc.GeneratePrivateKey()
+	if err != nil {
+		fmt.Printf("Error generating private key: %v\n", err)
+		return
+	}
+
+	// Marshal the private key to PEM format
+	pemBytes, err := privKey.MarshalPEM()
+	if err != nil {
+		fmt.Printf("Error marshalling to PEM: %v\n", err)
+		return
+	}
+
+	// Unmarshal the PEM back to a private key
+	parsedKey, err := ecc.UnmarshalPEM(pemBytes)
+	if err != nil {
+		fmt.Printf("Error unmarshalling PEM: %v\n", err)
+		return
+	}
+
+	// Show that the original and parsed keys match
+	fmt.Printf("Original key: %x\n", privKey.GetKey().Bytes())
+	fmt.Printf("Parsed key:   %x\n", parsedKey.GetKey().Bytes())
+
+	// Example: Try to unmarshal an invalid PEM
+	invalidPEM := []byte("-----BEGIN INVALID KEY-----\nABCDEF\n-----END INVALID KEY-----\n")
+	_, err = ecc.UnmarshalPEM(invalidPEM)
+	if err != nil {
+		fmt.Printf("Expected error for invalid PEM: %v\n", err)
+	}
+}
+
+func Example_marshalPublicPEM() {
+	// Generate a random private key and derive its public key
+	privKey, err := ecc.GeneratePrivateKey()
+	if err != nil {
+		fmt.Printf("Error generating private key: %v\n", err)
+		return
+	}
+	pubKey, err := privKey.DerivePublicKey()
+	if err != nil {
+		fmt.Printf("Error deriving public key: %v\n", err)
+		return
+	}
+
+	// Marshal the public key to PEM format
+	pemBytes, err := ecc.MarshalPublicPEM(pubKey)
+	if err != nil {
+		fmt.Printf("Error marshalling public key to PEM: %v\n", err)
+		return
+	}
+
+	// Print the PEM-encoded public key
+	fmt.Printf("%s", pemBytes)
+}
+
+func Example_unmarshalPublicPEM() {
+	// Generate a random private key and derive its public key
+	privKey, err := ecc.GeneratePrivateKey()
+	if err != nil {
+		fmt.Printf("Error generating private key: %v\n", err)
+		return
+	}
+	pubKey, err := privKey.DerivePublicKey()
+	if err != nil {
+		fmt.Printf("Error deriving public key: %v\n", err)
+		return
+	}
+
+	// Marshal the public key to PEM format
+	pemBytes, err := ecc.MarshalPublicPEM(pubKey)
+	if err != nil {
+		fmt.Printf("Error marshalling public key to PEM: %v\n", err)
+		return
+	}
+
+	// Unmarshal the PEM back to a CurvePoint
+	parsedPubKey, err := ecc.UnmarshalPublicPEM(pemBytes)
+	if err != nil {
+		fmt.Printf("Error unmarshalling public key PEM: %v\n", err)
+		return
+	}
+
+	// Show that the original and parsed public keys match
+	x1, y1, _ := pubKey.CoordinateIfNotInfinity()
+	x2, y2, _ := parsedPubKey.CoordinateIfNotInfinity()
+	fmt.Printf("Original public key X: %x\n", x1.Bytes())
+	fmt.Printf("Original public key Y: %x\n", y1.Bytes())
+	fmt.Printf("Parsed public key X:   %x\n", x2.Bytes())
+	fmt.Printf("Parsed public key Y:   %x\n", y2.Bytes())
+
+	// Example: Try to unmarshal an invalid PEM
+	invalidPEM := []byte("-----BEGIN INVALID KEY-----\nABCDEF\n-----END INVALID KEY-----\n")
+	_, err = ecc.UnmarshalPublicPEM(invalidPEM)
+	if err != nil {
+		fmt.Printf("Expected error for invalid PEM: %v\n", err)
+	}
+}
